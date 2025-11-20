@@ -144,7 +144,18 @@ def ingest_date(date_str: str):
 
 
 if __name__ == "__main__":
-    # Example: ingest yesterday's games
+    import sys
+    from datetime import timedelta
+
     init_db()
-    date_str = datetime.today().strftime("%Y-%m-%d")
+
+    # If user passes a date argument: use that
+    if len(sys.argv) > 1:
+        date_str = sys.argv[1]
+    else:
+        # Default: yesterday (to avoid empty future dates)
+        date_str = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    print(f"Running ingestion for date: {date_str}")
     ingest_date(date_str)
+
