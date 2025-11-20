@@ -4,3 +4,5 @@ numpy
 sqlalchemy
 matplotlib
 jupyter
+requests
+scikit-learn
