@@ -4,8 +4,8 @@ ingest_boxscores.py
 Phase 3: Ingest real NBA game data & boxscores into SQLite.
 
 Fixes:
-- ScoreboardV2 is unreliable (returns HTML, empty JSON, or rate limits)
-- This version uses direct scoreboardv3 endpoint with real browser headers
+- ScoreboardV2 (nba_api) is unreliable / blocked by NBA
+- Replaced by direct scoreboardv3 API calls with browser headers
 
 Tables populated:
     - games
@@ -18,11 +18,11 @@ from pathlib import Path
 import requests
 import pandas as pd
 
-# Still use nba_api for boxscores
+# nba_api still reliable for boxscores
 from nba_api.stats.endpoints import BoxScoreTraditionalV2
 from nba_api.stats.library.http import NBAStatsHTTP
 
-# Fake browser headers to bypass NBA blocking
+# Browser headers to bypass NBA Cloudflare protection
 NBAStatsHTTP.headers.update({
     "Host": "stats.nba.com",
     "User-Agent": (
@@ -47,12 +47,11 @@ from db import get_connection, init_db
 BASE_DIR = Path(__file__).resolve().parents[1]
 
 # ---------------------------------------------------------------------
-# Fetch games (replaces ScoreboardV2 — this version is reliable)
+# Fetch games using scoreboardv3 (fully reliable)
 # ---------------------------------------------------------------------
 def fetch_games_for_date(date_str: str) -> pd.DataFrame:
     """
-    Fetch games directly using NBA Stats API (scoreboardv3).
-    date_str: YYYY-MM-DD
+    Fetch games for a given YYYY-MM-DD date using NBA Stats API scoreboardv3.
     """
 
     url = "https://stats.nba.com/stats/scoreboardv3"
@@ -76,24 +75,20 @@ def fetch_games_for_date(date_str: str) -> pd.DataFrame:
         "Sec-Fetch-Dest": "empty",
     }
 
-    params = {
-        "GameDate": date_str,
-        "LeagueID": "00",
-        "DayOffset": "0"
-    }
+    params = {"GameDate": date_str, "LeagueID": "00", "DayOffset": "0"}
 
-    resp = requests.get(url, headers=headers, params=params, timeout=10)
+    response = requests.get(url, headers=headers, params=params, timeout=10)
 
-    if resp.status_code != 200:
-        print("ERROR: status code", resp.status_code)
-        print(resp.text[:200])
+    if response.status_code != 200:
+        print(f"ERROR: HTTP {response.status_code}")
+        print(response.text[:300])
         return pd.DataFrame()
 
-    data = resp.json()
+    data = response.json()
     games_list = data.get("scoreboard", {}).get("games", [])
 
     if not games_list:
-        print("No games found for", date_str)
+        print(f"No games found for {date_str}")
         return pd.DataFrame()
 
     rows = []
@@ -103,25 +98,24 @@ def fetch_games_for_date(date_str: str) -> pd.DataFrame:
             "season": g.get("season"),
             "game_date": g.get("gameDateEst"),
             "home_team_id": g.get("homeTeam", {}).get("teamId"),
-            "away_team_id": g.get("awayTeam", {}).get("teamId")
+            "away_team_id": g.get("awayTeam", {}).get("teamId"),
         })
 
     return pd.DataFrame(rows)
 
+
 # ---------------------------------------------------------------------
-# Fetch boxscores — nba_api still works for this
+# Fetch boxscores using BoxScoreTraditionalV2
 # ---------------------------------------------------------------------
 def fetch_boxscores(game_id: str) -> pd.DataFrame:
-    """
-    Fetch boxscores for a single game using BoxScoreTraditionalV2.
-    """
+    """Fetch player boxscore stats for a single game."""
 
     box = BoxScoreTraditionalV2(game_id=game_id)
     df = box.get_data_frames()[0]
 
     df = df[[
         "GAME_ID", "PLAYER_ID", "TEAM_ID", "OPPONENT_TEAM_ID",
-        "MIN", "PTS", "REB", "AST", "STL", "BLK", "TO"
+        "MIN", "PTS", "REB", "AST", "STL", "BLK", "TO",
     ]].copy()
 
     df.rename(columns={
@@ -135,13 +129,14 @@ def fetch_boxscores(game_id: str) -> pd.DataFrame:
         "AST": "assists",
         "STL": "steals",
         "BLK": "blocks",
-        "TO": "turnovers"
+        "TO": "turnovers",
     }, inplace=True)
 
     return df
 
+
 # ---------------------------------------------------------------------
-# Database Writes
+# Database writes
 # ---------------------------------------------------------------------
 def upsert_games(df_games: pd.DataFrame):
     with get_connection() as conn:
@@ -163,3 +158,51 @@ def insert_boxscores(df_box: pd.DataFrame):
         sql = """
         INSERT INTO boxscores (
             game_id, player_id, team_id, opponent_team_id,
+            minutes, points, rebounds, assists,
+            steals, blocks, turnovers
+        ) VALUES (
+            :game_id, :player_id, :team_id, :opponent_team_id,
+            :minutes, :points, :rebounds, :assists,
+            :steals, :blocks, :turnovers
+        );
+        """
+        cursor.executemany(sql, df_box.to_dict("records"))
+        conn.commit()
+
+
+# ---------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------
+def ingest_date(date_str: str):
+    print(f"Fetching games for {date_str}...")
+    games = fetch_games_for_date(date_str)
+
+    if games.empty:
+        print("No games to process.")
+        return
+
+    print(f"Found {len(games)} games. Inserting into DB...")
+    upsert_games(games)
+
+    print("Fetching boxscores...")
+    for game_id in games["game_id"]:
+        print(f"  - Game {game_id}")
+        df_box = fetch_boxscores(game_id)
+        insert_boxscores(df_box)
+        time.sleep(0.7)
+
+    print("Ingestion complete for", date_str)
+
+
+if __name__ == "__main__":
+    import sys
+
+    init_db()
+
+    if len(sys.argv) > 1:
+        date_str = sys.argv[1]
+    else:
+        date_str = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    print("Running ingestion for", date_str)
+    ingest_date(date_str)
