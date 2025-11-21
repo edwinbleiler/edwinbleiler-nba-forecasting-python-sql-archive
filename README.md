@@ -1,6 +1,7 @@
 NBA Player Forecasting Project (Python + SQL)
 
 Created by Edwin (Ed) Bleiler
+
 A structured analytics portfolio project using Python, SQL, and a normalized data model.
 
 This repository demonstrates how I build analytical systems: clear data architecture, measurable metrics, repeatable pipelines, and transparent forecasting logic. The project uses NBA player data, but the methods mirror the structured problem-solving I apply in Strategy & Operations, Product, and Chief of Staff roles.
