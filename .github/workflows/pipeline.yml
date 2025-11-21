@@ -38,6 +38,11 @@ jobs:
           mkdir -p data
           mkdir -p outputs
 
+      # Test dependencies
+      - name: Test environment
+        run: |
+          python -c "import pandas, nba_api; print('env ok')"
+
       # Run your full pipeline with retry logic
       - name: Run full pipeline with retry
         run: |
