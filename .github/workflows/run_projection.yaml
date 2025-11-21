@@ -1,0 +1,36 @@
+name: Run Projections for Upcoming Game
+
+on:
+  workflow_dispatch:
+    inputs:
+      game_date:
+        description: "YYYY-MM-DD"
+        required: true
+      minutes_before:
+        description: "Minutes before tipoff"
+        required: true
+
+jobs:
+  run-projections:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Run full pipeline for game
+        run: |
+          echo "Running projections for ${{ inputs.game_date }}"
+          python .github/scripts/run_full_pipeline.py ${{ inputs.game_date }}
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: projections-${{ inputs.game_date }}
+          path: outputs/
+          if-no-files-found: warn
