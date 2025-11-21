@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Keep retry only for pip, which is flaky on GitHub's infra
+      # Retry only the flaky part: pip install
       - name: Install dependencies (with retry)
         uses: nick-fields/retry@v3
         with:
@@ -30,8 +30,8 @@ jobs:
           command: |
             pip install -r requirements.txt
 
-      # Run your pipeline once; do NOT wrap this in the retry action
-      # and always skip yesterday backfill in CI so it can't hang pre-game
+      # Run the pipeline once; do not wrap this in retry.
+      # Tell the script to skip the "yesterday" ingest so it can't hang pre-game.
       - name: Run full pipeline
         env:
           SKIP_YESTERDAY_BACKFILL: "1"
