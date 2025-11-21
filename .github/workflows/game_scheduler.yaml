@@ -1,0 +1,22 @@
+name: NBA Game Scheduler
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # every hour
+  workflow_dispatch:
+
+jobs:
+  schedule-games:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install requests pytz
+
+      - name: Run game scheduler
+        run: |
+          python .github/scripts/trigger_game_runs.py
