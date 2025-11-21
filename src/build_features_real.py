@@ -129,46 +129,27 @@ def build_features():
     df["is_3in4"] = (df["days_rest"].between(1, 2)).astype(int)
 
     # Travel distance
-    def compute_travel(row):
-        team = row["team_id"]
-        prev = row.get("prev_game_id", None)
-        if pd.isna(prev):
-            return 0
+def compute_travel(row):
+    # No previous game → no travel
+    if pd.isna(row.prev_game_date):
+        return 0.0
 
-        # Home team or away?
-        game_row = df_games[df_games["game_id"] == row["game_id"]].iloc[0]
-        loc = "home" if game_row.home_team_id == team else "away"
+    # Locate previous game row for the *same player*
+    prev_game_row = df[
+        (df.player_id == row.player_id) &
+        (df.game_date == row.prev_game_date)
+    ].iloc[0]
 
-        prev_game_row = df_games[df_games["game_id"] == row["prev_game_id"]]
-        if prev_game_row.empty:
-            return 0
-        prev_game_row = prev_game_row.iloc[0]
-        prev_loc = "home" if prev_game_row.home_team_id == team else "away"
+    # The previous game location = the opponent’s arena
+    prev_lat = team_locs.loc[int(prev_game_row.opponent_team), "lat"]
+    prev_lon = team_locs.loc[int(prev_game_row.opponent_team), "lon"]
 
-        # Current coords
-        cur_team_id = team
-        cur_lat = team_locs.loc[cur_team_id, "lat"]
-        cur_lon = team_locs.loc[cur_team_id, "lon"]
+    # The current game location = the opponent’s arena
+    curr_lat = team_locs.loc[int(row.opponent_team), "lat"]
+    curr_lon = team_locs.loc[int(row.opponent_team), "lon"]
 
-        prev_lat = cur_lat
-        prev_lon = cur_lon
+    return haversine(prev_lon, prev_lat, curr_lon, curr_lat)
 
-        # Real travel: from previous arena → today’s arena
-        if loc == "home":
-            cur_lat = team_locs.loc[team, "lat"]
-            cur_lon = team_locs.loc[team, "lon"]
-        else:
-            cur_lat = team_locs.loc[row["opponent_team_id"], "lat"]
-            cur_lon = team_locs.loc[row["opponent_team_id"], "lon"]
-
-        if prev_loc == "home":
-            prev_lat = team_locs.loc[team, "lat"]
-            prev_lon = team_locs.loc[team, "lon"]
-        else:
-            prev_lat = team_locs.loc[prev_game_row.opponent_team_id, "lat"]
-            prev_lon = team_locs.loc[prev_game_row.opponent_team_id, "lon"]
-
-        return haversine(prev_lat, prev_lon, cur_lat, cur_lon)
 
     df["prev_game_id"] = df.groupby("player_id")["game_id"].shift(1)
     df["travel_km"] = df.apply(compute_travel, axis=1)
