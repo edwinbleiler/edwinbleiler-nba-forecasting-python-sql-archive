@@ -1,24 +1,19 @@
-name: NBA Forecasting Pipeline
+name: NBA Forecasting Daily Pipeline
 
 on:
-  workflow_dispatch:        # allows manual testing
   schedule:
-    # 11 AM EST → 16:00 UTC
+    # 11 AM ET  = 16:00 UTC
     - cron: "0 16 * * *"
-    # 4 PM EST → 21:00 UTC
+    # 4 PM ET = 21:00 UTC
     - cron: "0 21 * * *"
-    # Overnight (8 AM UTC)
-    - cron: "0 8 * * *"
+  workflow_dispatch:
 
 jobs:
-  run-pipeline:
+  daily-pipeline:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,71 +22,29 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Ensure directories exist
+      - name: Ensure folders exist
         run: |
           mkdir -p data
           mkdir -p outputs
-          mkdir -p logs
 
-      - name: Compute dates
-        id: dates
-        run: |
-          echo "TODAY=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
-          echo "YESTERDAY=$(date -u -d 'yesterday' +%Y-%m-%d)" >> $GITHUB_ENV
+      - name: Run full pipeline
+        run: python .github/scripts/run_full_pipeline.py
 
-      - name: Log date info
-        run: |
-          echo "Running pipeline at $(date -u)"
-          echo "Today: $TODAY"
-          echo "Yesterday: $YESTERDAY"
-
-      - name: Ingest previous day
-        run: |
-          echo "Ingesting $YESTERDAY"
-          python src/ingest_boxscores.py $YESTERDAY | tee logs/ingest_$YESTERDAY.log
-
-      - name: Build feature set
-        run: |
-          echo "Building features..."
-          python src/build_features_real.py | tee logs/features_$TODAY.log
-
-      - name: Build model dataset
-        run: |
-          echo "Building model dataset..."
-          python src/build_model_dataset.py | tee logs/dataset_$TODAY.log
-
-      - name: Train minutes model
-        run: |
-          echo "Training minutes model..."
-          python src/model_minutes.py | tee logs/minutes_$TODAY.log
-
-      - name: Train stats model
-        run: |
-          echo "Training stats model..."
-          python src/model_stats.py | tee logs/stats_$TODAY.log
-
-      - name: Upload Outputs
+      - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
-          name: nba-forecasting-outputs
-          path: |
-            outputs/
-            logs/
-            data/nba_forecasting.db
+          name: nba-outputs
+          path: outputs/
           if-no-files-found: warn
 
-      - name: Commit & Push updated data
+      - name: Commit updated data
         if: github.ref == 'refs/heads/main'
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
-          git add outputs data logs || true
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Pipeline update $(date -u)"
-            git push
-          fi
+          git add data outputs || true
+          git commit -m "Daily pipeline update $(date -u)" || true
+          git push || true
