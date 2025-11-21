@@ -44,10 +44,27 @@ def fetch_game_ids(date_str: str):
 # ---------------------------------------------------------
 
 def fetch_boxscore_and_team_ids(game_id: str):
-    box = BoxScoreTraditionalV3(game_id=game_id)
-    df = box.get_data_frames()[0]  # player stats
+    """Fetch boxscore data. If game is incomplete or data missing, return None."""
+    try:
+        box = BoxScoreTraditionalV3(game_id=game_id)
+        df = box.get_data_frames()[0]  # Player stats
+    except Exception as e:
+        print(f"    Skipping {game_id}: boxscore not available yet ({e})")
+        return None, None, None
 
-    # Required columns
+    # If df is empty or invalid, skip
+    if df is None or df.empty:
+        print(f"    Skipping {game_id}: empty or invalid boxscore")
+        return None, None, None
+
+    # Required columns must exist
+    required_cols = ["teamId", "personId", "minutes", "reboundsTotal"]
+    missing = [c for c in required_cols if c not in df.columns]
+    if missing:
+        print(f"    Skipping {game_id}: missing columns {missing}")
+        return None, None, None
+
+    # Select & clean columns
     df = df[[
         "gameId", "personId", "teamId", "minutes", "points",
         "reboundsTotal", "assists", "steals", "blocks", "turnovers"
@@ -60,22 +77,21 @@ def fetch_boxscore_and_team_ids(game_id: str):
         "reboundsTotal": "rebounds"
     }, inplace=True)
 
-    # Determine home/away teams:
-    team_ids = df["team_id"].unique()
-
+    # Determine teams
+    team_ids = df["team_id"].dropna().unique()
     if len(team_ids) != 2:
-        raise ValueError(f"Boxscore returned {len(team_ids)} teams for {game_id}, expected 2.")
+        print(f"    Skipping {game_id}: unusual team ID structure {team_ids}")
+        return None, None, None
 
     home_team = int(team_ids[0])
     away_team = int(team_ids[1])
 
-    # Opponent team
+    # Opponent logic
     df["opponent_team_id"] = df["team_id"].apply(
         lambda tid: away_team if tid == home_team else home_team
     )
 
     return df, home_team, away_team
-
 
 # ---------------------------------------------------------
 # Insert into DB
@@ -127,20 +143,26 @@ def ingest_date(date_str: str):
 
     print(f"Found {len(game_ids)} games.")
 
-    for gid in game_ids:
-        print(f"  - Processing game {gid}...")
+for gid in game_ids:
+    print(f"  - Processing game {gid}...")
 
-        df_box, home_team, away_team = fetch_boxscore_and_team_ids(gid)
+    df_box, home_team, away_team = fetch_boxscore_and_team_ids(gid)
 
-        # Insert game
-        upsert_game(gid, date_str, home_team, away_team)
+    # Skip games with incomplete or missing boxscore data
+    if df_box is None:
+        print(f"    Skipped {gid}: incomplete or unavailable boxscore")
+        continue
 
-        # Insert boxscores
-        insert_boxscores(df_box)
+    # Insert game
+    upsert_game(gid, date_str, home_team, away_team)
 
-        time.sleep(0.7)
+    # Insert player boxscores
+    insert_boxscores(df_box)
 
-    print(f"Done ingesting {date_str}!")
+    time.sleep(0.7)
+
+print(f"Done ingesting {date_str}!")
+
 
 
 # ---------------------------------------------------------
