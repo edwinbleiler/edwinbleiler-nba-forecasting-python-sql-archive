@@ -1,146 +1,138 @@
-# NBA Player Forecasting Project (Python + SQL)
-*Created by Edwin (Ed) Bleiler*
+NBA Player Forecasting Project (Python + SQL)
 
-This project forecasts NBA player performance using structured analytics, a normalized SQL data model, and a Python-based feature pipeline.  
-It reflects the way I approach complex, ambiguous problems in Strategy & Operations, Product, and Chief of Staff roles: define the system, build clear metrics, and create a repeatable analytical framework that supports decision-making.
+Created by Edwin (Ed) Bleiler
+A structured analytics portfolio project using Python, SQL, and a normalized data model.
 
-[edwinbleiler.com](https://edwinbleiler.com)  
-[LinkedIn](https://www.linkedin.com/in/edwin-ed-bleiler/)  
-GitHub: [@edwinbleiler](https://github.com/edwinbleiler)
+This repository demonstrates how I build analytical systems: clear data architecture, measurable metrics, repeatable pipelines, and transparent forecasting logic. The project uses NBA player data, but the methods mirror the structured problem-solving I apply in Strategy & Operations, Product, and Chief of Staff roles.
 
----
+Links:
 
-## Why This Project Matters (Professional Context)
+Website: https://edwinbleiler.com
 
-Although the dataset is sports-related, the work mirrors the analytical and operational challenges I’ve led professionally:
+LinkedIn: https://www.linkedin.com/in/edwin-ed-bleiler/
 
-- Turning unstructured information into a clean data model  
-- Designing metrics that reflect reliability, volatility, and context  
-- Building forecasting frameworks grounded in real data  
-- Automating repeatable processes  
-- Communicating assumptions, logic, and outputs clearly  
-- Applying structure in ambiguous problem spaces — a core requirement in Strategy, Product, and Chief of Staff work
+GitHub: @edwinbleiler
 
-The value of the project isn’t in predicting basketball outcomes — it’s in demonstrating the systems thinking, modeling discipline, and clarity of execution that translate directly into operational analytics, vendor evaluation, forecasting workflows, and product design.  It is also a fun way to learn and develop Python and SQL skills.
+What This Project Demonstrates (High-Level Summary)
 
----
+This work is intentionally designed to showcase:
 
-## Project Overview
+Python + SQL proficiency with real data ingestion, schema design, and feature engineering
 
-**Goal:** Build a forecasting workflow that projects NBA player performance by combining:  
-- Rolling 10-game performance averages  
-- A consistency score (volatility measurement)  
-- Opponent defensive strength by position (DvP)
+Data modeling discipline using a normalized relational schema
 
-**Stack:**  
+Forecasting frameworks grounded in interpretable metrics
+
+Operational analytics thinking applied in a structured, repeatable workflow
+
+Product-style clarity around assumptions, logic, and decision-support design
+
+Systems thinking — the same approach I’ve used in cross-functional leadership roles
+
+For SEO: this section gives Google clear, repeated signals about your skills and project domain.
+
+Project Overview
+
+Goal: Build a forecasting workflow that projects NBA player performance using structured metrics and a clean SQL-backed data pipeline.
+
+Tech Stack:
 Python | SQL | SQLite | nba_api | pandas | numpy | matplotlib
 
-**Core Outputs:**  
-- Fully structured SQL database  
-- Feature engineering pipeline  
-- Multi-factor forecast per player  
-- CSV and visualization outputs  
-- Reproducible notebooks documenting analysis steps
+Outputs:
 
----
+SQL database (normalized schema)
 
-## Approach & Methodology
+Feature engineering pipeline in Python
 
-### 1. Data Ingestion
-- Pull team, player, game, and box score data via the NBA API  
-- Normalize and store in a relational SQLite database  
-- Maintain raw and processed versions for auditing and reproducibility
+Multi-factor forecast per player
 
-### 2. SQL Schema Design
-- Tables for teams, players, games, boxscores  
-- Views for computed fantasy-like metrics (FPPG)  
-- Efficient joins for matchup and positional relationships
+CSV outputs
 
-### 3. Feature Engineering
+Visualization + Jupyter notebooks documenting analysis
+
+Methodology
+1. Data Ingestion
+
+Pull team, player, game, and box score data via the NBA API
+
+Store normalized tables in SQLite
+
+Maintain raw + processed layers for auditability
+
+2. SQL Schema Design
+
+Tables for teams, players, games, boxscores
+
+Views for derived metrics (FPPG, rolling averages)
+
+Efficient joins for matchup logic and positional relationships
+
+3. Feature Engineering
+
 Metrics include:
-- **Rolling averages** (10-game windows)  
-- **Consistency score** (coefficient of variation)  
-- **Opponent defensive factor (DvP)**  
-- **Forecast score** combining performance, volatility, and matchup context
 
-### 4. Forecasting Formula (simple, interpretable)
+Rolling 10-game averages
+
+Consistency score (volatility)
+
+Defensive factor by opponent (DvP)
+
+Composite forecast score
+
+4. Forecasting Logic (simple + interpretable)
 base = fppg_last_10
 matchup_adj = base * dvp_factor
 forecast = matchup_adj * (0.5 + 0.5 * consistency_score / 100)
 
+5. Outputs
 
-This framework prioritizes interpretability—useful not only for sports data but for any structured forecasting or prioritization model.
+outputs/player_forecasts.csv
 
-### 5. Outputs
-- `outputs/player_forecasts.csv`  
-- Visual summaries (player volatility, matchup strength, etc.)  
-- Jupyter notebooks walking through discovery → modeling → forecasting
+Notebook-based analysis
 
----
+Plots showing volatility, matchup factors, and player distributions
 
-## Skills Demonstrated
-
-This project showcases skills directly relevant to Strategy, Product, and Chief of Staff roles:
-
-- **Analytical Modeling** — translating qualitative ideas into measurable metrics  
-- **Data Architecture** — building normalized SQL schemas and ETL pipelines  
-- **Product Thinking** — defining inputs, constraints, and clear interpretation logic  
-- **Operational Analytics** — turning multi-source data into decision frameworks  
-- **Automation** — building repeatable and reliable workflows  
-- **Technical Fluency** — Python, SQL, API integration, reproducible analysis  
-- **Clarity & Communication** — documenting assumptions, methodology, and results  
-- **System Design** — structuring end-to-end processes from ingestion to insight  
-
----
-
-## Example Output (placeholder)
-
-| Player | Team | Avg FP (L10) | Consistency | Opp DvP | Forecast |
-|--------|------|--------------|-------------|---------|----------|
-| Player A | BOS | 41.2 | 88 | 1.05 | 43.7 |
-| Player B | DEN | 35.9 | 76 | 0.95 | 34.1 |
-
----
-
-## Repository Structure
+Example Output
+Player	Team	Avg FP (L10)	Consistency	Opp DvP	Forecast
+Player A	BOS	41.2	88	1.05	43.7
+Player B	DEN	35.9	76	0.95	34.1
+Repository Structure
 edwinbleiler-nba-forecasting-python-sql/
-│
 ├── data/
-│ ├── raw/
-│ └── processed/
 ├── sql/
-│ ├── schema.sql
-│ ├── views_forecasting.sql
-│ └── queries_examples.sql
 ├── src/
-│ ├── db.py
-│ ├── fetch_data.py
-│ ├── build_features.py
-│ ├── calculate_consistency.py
-│ ├── defense_vs_position.py
-│ └── project_tonight.py
 ├── notebooks/
-│ ├── exploratory_analysis.ipynb
-│ ├── forecasting_model.ipynb
-│ └── matchup_analysis.ipynb
 ├── outputs/
-│ └── player_forecasts.csv
 ├── PROJECT_PLAN.md
 ├── LEARNING_LOG.md
 ├── ABOUT_THIS_PROJECT.md
-├── requirements.txt
-└── .gitignore
+└── requirements.txt
 
+Skills Demonstrated
 
----
+Python and SQL for real-world analytics
 
-## About the Author
+Data architecture and schema planning
 
-**I’m Edwin (Ed) Bleiler, a Strategy & Operations leader focused on structuring ambiguity, building data-informed decision frameworks, and designing scalable systems across product, analytics, and cross-functional operations.**  
-My work centers on clarity, structure, and measurable execution — whether I’m supporting leadership decisions, improving operational processes, or designing analytical workflows like this project.
+Forecast modeling and metric design
 
-Learn more:  
-**https://edwinbleiler.com**  
-**https://www.linkedin.com/in/edwin-ed-bleiler/**  
-GitHub: **@edwinbleiler**
+ETL pipelines and automation
 
+Structured operational analytics
+
+Clear communication of logic and assumptions
+
+Systems thinking under ambiguous requirements
+
+About the Author
+
+I’m Edwin (Ed) Bleiler — a Strategy & Operations leader focused on data-driven decision frameworks, scalable systems, and high-clarity execution across Product, Analytics, and cross-functional operations.
+This project reflects the same approach I bring to forecasting, vendor evaluations, operational design, and structured problem-solving.
+
+More about me:
+
+https://edwinbleiler.com
+
+https://www.linkedin.com/in/edwin-ed-bleiler/
+
+GitHub: @edwinbleiler
