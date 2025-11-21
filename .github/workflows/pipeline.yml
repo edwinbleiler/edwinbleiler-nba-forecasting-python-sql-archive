@@ -1,0 +1,70 @@
+name: NBA Forecasting Pipeline
+
+on:
+  schedule:
+    - cron: "0 8 * * *"   # Runs every day at 8:00 UTC (~3AM EST)
+  workflow_dispatch:        # allows manual run
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create data and outputs directories if missing
+        run: |
+          mkdir -p data
+          mkdir -p outputs
+
+      - name: Determine yesterday's date
+        id: dates
+        run: |
+          echo "YESTERDAY=$(date -u -d 'yesterday' +%Y-%m-%d)" >> $GITHUB_ENV
+
+      - name: Run ingestion for yesterday
+        run: |
+          echo "Ingesting $YESTERDAY"
+          python src/ingest_boxscores.py $YESTERDAY
+
+      - name: Build feature set
+        run: |
+          python src/build_features_real.py
+
+      - name: Build model dataset
+        run: |
+          python src/build_model_dataset.py
+
+      - name: Train minutes model
+        run: |
+          python src/model_minutes.py
+
+      # Upload artifacts for download
+      - name: Upload Outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: nba-forecasting-outputs
+          path: outputs/
+
+      # OPTIONAL: automatically commit new data back to repo
+      - name: Commit & Push updated outputs
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add outputs data
+          git commit -m "Automated pipeline update $(date -u)"
+          git push
